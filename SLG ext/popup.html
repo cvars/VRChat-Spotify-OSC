@@ -3,108 +3,32 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Spotify Lyrics Grabber</title>
-<style>
-    body {
-        font-family: 'Segoe UI', sans-serif;
-        background: #121212;
-        color: #fff;
-        margin: 0;
-        padding: 16px;
-        width: 320px;
-        min-height: 240px;
-        display: flex;
-        flex-direction: column;
-        gap: 12px;
-    }
-
-    h1 {
-        font-size: 18px;
-        font-weight: 600;
-        text-align: center;
-        margin: 0;
-        color: #1DB954;
-    }
-
-    .card {
-        background: #181818;
-        border-radius: 12px;
-        padding: 12px;
-        box-shadow: 0 0 8px rgba(0, 0, 0, 0.4);
-    }
-
-    .label {
-        font-size: 13px;
-        color: #aaa;
-        margin-bottom: 4px;
-    }
-
-    #track {
-        font-size: 14px;
-        font-weight: 500;
-        color: #fff;
-        margin-bottom: 6px;
-    }
-
-    #lyrics {
-        font-size: 13px;
-        color: #ddd;
-        max-height: 120px;
-        overflow-y: auto;
-        line-height: 1.4;
-        white-space: pre-wrap;
-    }
-
-    button {
-        background-color: #1DB954;
-        color: #fff;
-        border: none;
-        border-radius: 8px;
-        padding: 8px 12px;
-        font-size: 14px;
-        font-weight: 600;
-        cursor: pointer;
-        transition: background-color 0.2s ease;
-    }
-
-    button:hover {
-        background-color: #17a44d;
-    }
-
-    footer {
-        font-size: 11px;
-        color: #666;
-        text-align: center;
-        margin-top: auto;
-    }
-
-    ::-webkit-scrollbar {
-        width: 6px;
-    }
-
-    ::-webkit-scrollbar-thumb {
-        background: #333;
-        border-radius: 4px;
-    }
-</style>
+<title>Spotify Grabber</title>
+<link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <h1>Spotify Grabber</h1>
+<div class="menu">
+    <div class="menu-title">SPOTIFY GRABBER</div>
+    <div class="menu-line"></div>
 
-    <div class="card">
-        <div class="label">Now Playing:</div>
-        <div id="track">Loading track...</div>
+    <!-- Now Playing Section -->
+    <div class="section now-playing">
+        <div class="section-title">
+            <span>NOW PLAYING</span>
+            <span id="volume" class="volume-inline">[VOL: 0%]</span>
+        </div>
+        <div id="track" class="section-text">Loading track...</div>
     </div>
 
-    <div class="card">
-        <div class="label">Lyrics:</div>
-        <div id="lyrics">Loading lyrics...</div>
+    <!-- Lyrics Section -->
+    <div class="section">
+        <div class="section-title">Lyrics</div>
+        <div id="lyrics" class="section-lyrics">Loading lyrics...</div>
     </div>
 
-    <button id="refresh">Refresh</button>
+    <div class="menu-footer" datetime="2025-11-12">November 12 - (2025)</div>
+</div>
 
-    <footer>by CVARS 17/10/2025</footer>
-
-    <script src="popup.js"></script>
+<script src="popup.js"></script>
 </body>
 </html>

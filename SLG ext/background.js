@@ -2,6 +2,7 @@
 const FETCH_INTERVAL_MS = 100;
 let lastLyrics = '';
 let lastTrack = '';
+let lastVolume = null;
 let fetchInterval;
 
 chrome.runtime.onInstalled.addListener(startFetching);
@@ -17,6 +18,7 @@ function fetchAndSend() {
         if (!tabs.length) return;
         const tabId = tabs[0].id;
 
+        // Lyrics
         chrome.scripting.executeScript({ target: { tabId }, func: scrapeLyrics }, res => {
             const lyrics = res?.[0]?.result;
             if (lyrics && lyrics !== lastLyrics) {
@@ -26,6 +28,7 @@ function fetchAndSend() {
             }
         });
 
+        // Track
         chrome.scripting.executeScript({ target: { tabId }, func: scrapeTrack }, res => {
             const track = res?.[0]?.result;
             if (track && track !== lastTrack) {
@@ -34,64 +37,70 @@ function fetchAndSend() {
                 send('track', track);
             }
         });
+
+        // Volume
+        chrome.scripting.executeScript({ target: { tabId }, func: scrapeVolume }, res => {
+            const volume = res?.[0]?.result;
+            if (typeof volume === 'number' && volume !== lastVolume) {
+                lastVolume = volume;
+                chrome.storage.local.set({ volume });
+                send('volume', volume);
+            }
+        });
     });
 }
 
-// ✅ fixed: gets all lyric lines, skips empty or ♪
-function scrapeAllLyrics() {
-    const nodes = document.querySelectorAll('div[data-testid="fullscreen-lyric"] div.MmIREVIj8A2aFVvBZ2Ev');
-    return Array.from(nodes)
-        .map(n => n.innerText.trim())
-        .filter(line => line && line !== '♪')
-        .join('\n');
-}
-
+// ✅ Scrapes the current Spotify lyric line
 function scrapeLyrics() {
-    // all lyric containers
-    const containers = Array.from(document.querySelectorAll('div[data-testid="fullscreen-lyric"]'));
+    // main container for lyrics
+    const activeLine = document.querySelector('div[data-testid="lyrics-line"][aria-current="true"]');
+    if (activeLine) return activeLine.innerText.trim();
 
-    if (!containers.length) return '';
+    // fallback: if not fullscreen, sometimes they use a different tag ig
+    const altLine = document.querySelector('div[data-testid="lyrics-container"] div[aria-current="true"]');
+    if (altLine) return altLine.innerText.trim();
 
-    // 1) Prefer container that has a class token starting with '_'
-    const byUnderscoreClass = containers.find(c =>
-        Array.from(c.classList).some(tok => tok.startsWith('_'))
-    );
-    if (byUnderscoreClass) {
-        const inner = byUnderscoreClass.querySelector('div.MmIREVIj8A2aFVvBZ2Ev');
-        if (inner) return inner.innerText.trim();
-    }
-
-    // 2) Newer Spotify builds may mark the active line explicitly
-    const explicit = document.querySelector('div[data-testid="fullscreen-lyric"] div[data-testid="fullscreen-lyric-line-current"]');
-    if (explicit) return explicit.innerText.trim();
-
-    // 3) Heuristic: pick the lyric line that looks "active" by computed style
-    for (const c of containers) {
-        const inner = c.querySelector('div.MmIREVIj8A2aFVvBZ2Ev');
-        if (!inner) continue;
-        const cs = window.getComputedStyle(inner);
-        // active line often has stronger font-weight or higher opacity
-        const weight = parseInt(cs.fontWeight) || 400;
-        const opacity = parseFloat(cs.opacity || '1');
-        if (weight >= 600 || opacity > 0.95) return inner.innerText.trim();
-    }
-
-    // 4) fallback: return first non-empty lyric line
-    for (const c of containers) {
-        const inner = c.querySelector('div.MmIREVIj8A2aFVvBZ2Ev');
-        if (inner && inner.innerText.trim()) return inner.innerText.trim();
+    // fallback to first non-empty visible lyric
+    const lines = document.querySelectorAll('div[data-testid="lyrics-line"]');
+    for (const line of lines) {
+        const text = line.innerText.trim();
+        if (text && window.getComputedStyle(line).opacity > 0.9) return text;
     }
 
     return '';
 }
 
-
+// ✅ Scrapes track title and artist
 function scrapeTrack() {
     const title = document.querySelector('div[data-testid="context-item-info-title"] a');
     const artist = document.querySelector('div[data-testid="context-item-info-subtitles"] a');
     return (title && artist) ? `${title.innerText.trim()} by ${artist.innerText.trim()}` : '';
 }
 
+// ✅ Scrapes current volume (0.0 – 1.0)
+function scrapeVolume() {
+    try {
+        // primary: Spotify’s volume slider inside data-testid="volume-bar"
+        const slider = document.querySelector('div[data-testid="volume-bar"] input[type="range"]');
+        if (slider && slider.value) {
+            const vol = parseFloat(slider.value);
+            if (!isNaN(vol)) return vol * 100; // convert to %
+        }
+
+        // fallback: Spotify sometimes keeps volume in localStorage as 0–1 float
+        const stored = localStorage.getItem('volume');
+        if (stored) {
+            const vol = parseFloat(stored);
+            if (!isNaN(vol)) return vol * 100;
+        }
+    } catch (e) {
+        console.error(e);
+    }
+    return null;
+}
+
+
+// ✅ Sends data to your local server
 function send(type, value) {
     fetch(`http://localhost:3000?${type}=` + encodeURIComponent(value))
         .then(r => r.text())
